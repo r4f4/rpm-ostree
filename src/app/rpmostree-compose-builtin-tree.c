@@ -70,6 +70,8 @@ static gboolean opt_print_only;
 static char *opt_write_commitid_to;
 static char *opt_write_composejson_to;
 static gboolean opt_no_parent;
+static char *opt_write_lockfile;
+static char *opt_read_lockfile;
 
 /* shared by both install & commit */
 static GOptionEntry common_option_entries[] = {
@@ -92,6 +94,8 @@ static GOptionEntry install_option_entries[] = {
   { "touch-if-changed", 0, 0, G_OPTION_ARG_STRING, &opt_touch_if_changed, "Update the modification time on FILE if a new commit was created", "FILE" },
   { "workdir", 0, 0, G_OPTION_ARG_STRING, &opt_workdir, "Working directory", "WORKDIR" },
   { "workdir-tmpfs", 0, G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_NONE, &opt_workdir_tmpfs, "Use tmpfs for working state", NULL },
+  { "write-lockfile-to", 0, 0, G_OPTION_ARG_STRING, &opt_write_lockfile, "Write RPM versions information to FILE", "FILE" },
+  { "lockfile", 0, 0, G_OPTION_ARG_STRING, &opt_read_lockfile, "Read RPM version information from FILE", "FILE" },
   { NULL }
 };
 
@@ -333,6 +337,10 @@ install_packages (RpmOstreeTreeComposeContext  *self,
     return FALSE;
 
   rpmostree_print_transaction (dnfctx);
+
+  if (opt_write_lockfile)
+    if (!rpmostree_composeutil_write_lockfilejson (self->corectx, opt_write_lockfile, error))
+      return FALSE;
 
   /* FIXME - just do a depsolve here before we compute download requirements */
   g_autofree char *ret_new_inputhash = NULL;
@@ -681,6 +689,19 @@ rpm_ostree_compose_context_new (const char    *treefile_pathstr,
                                               cancellable, error);
   if (!self->corectx)
     return FALSE;
+
+  g_autoptr(GHashTable) vlockmap = NULL;
+  if (opt_read_lockfile)
+    {
+      vlockmap = rpmostree_composeutil_get_vlockmap (opt_read_lockfile, error);
+      if (!vlockmap)
+        return FALSE;
+      g_print ("Loaded lockfile: %s\n", opt_read_lockfile);
+    }
+  else
+    vlockmap = g_hash_table_new (g_str_hash, g_str_equal);
+
+  rpmostree_context_set_vlockmap (self->corectx, vlockmap);
 
   const char *arch = dnf_context_get_base_arch (rpmostree_context_get_dnf (self->corectx));
   if (!parse_treefile_to_json (gs_file_get_path_cached (self->treefile_path),

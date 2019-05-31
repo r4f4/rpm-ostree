@@ -94,8 +94,8 @@ static GOptionEntry install_option_entries[] = {
   { "touch-if-changed", 0, 0, G_OPTION_ARG_STRING, &opt_touch_if_changed, "Update the modification time on FILE if a new commit was created", "FILE" },
   { "workdir", 0, 0, G_OPTION_ARG_STRING, &opt_workdir, "Working directory", "WORKDIR" },
   { "workdir-tmpfs", 0, G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_NONE, &opt_workdir_tmpfs, "Use tmpfs for working state", NULL },
-  { "write-lockfile-to", 0, 0, G_OPTION_ARG_STRING, &opt_write_lockfile, "Write RPM versions information to FILE", "FILE" },
-  { "lockfile", 0, 0, G_OPTION_ARG_STRING, &opt_read_lockfile, "Read RPM version information from FILE", "FILE" },
+  { "ex-write-lockfile-to", 0, 0, G_OPTION_ARG_STRING, &opt_write_lockfile, "Write RPM versions information to FILE", "FILE" },
+  { "ex-lockfile", 0, 0, G_OPTION_ARG_STRING, &opt_read_lockfile, "Read RPM version information from FILE", "FILE" },
   { NULL }
 };
 
@@ -338,8 +338,8 @@ install_packages (RpmOstreeTreeComposeContext  *self,
 
   rpmostree_print_transaction (dnfctx);
 
-  if (opt_write_lockfile)
-    if (!rpmostree_composeutil_write_lockfilejson (self->corectx, opt_write_lockfile, error))
+  if (opt_write_lockfile &&
+      !rpmostree_composeutil_write_lockfilejson (self->corectx, opt_write_lockfile, error))
       return FALSE;
 
   /* FIXME - just do a depsolve here before we compute download requirements */

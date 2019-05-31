@@ -498,6 +498,8 @@ rpmostree_composeutil_write_lockfilejson (RpmOstreeContext  *ctx,
   g_assert (lock_node != NULL);
   glnx_unref_object JsonGenerator *generator = json_generator_new ();
   json_generator_set_root (generator, lock_node);
+  /* Let's make it somewhat introspectable by humans */
+  json_generator_set_pretty (generator, TRUE);
 
   char *dnbuf = strdupa (path);
   const char *dn = dirname (dnbuf);
@@ -529,26 +531,16 @@ rpmostree_composeutil_get_vlockmap (const char  *path,
 {
   g_autoptr(JsonParser) parser = json_parser_new_immutable ();
   if (!json_parser_load_from_file (parser, path, error))
-    {
-      g_prefix_error (error, "Loading %s: ", path);
-      return NULL;
-    }
+    return glnx_null_throw (error, "Could not load lockfile %s", path);
 
   JsonNode *metarootval = json_parser_get_root (parser);
   g_autoptr(GVariant) jsonmetav = json_gvariant_deserialize (metarootval, "a{sv}", error);
   if (!jsonmetav)
-    {
-      g_prefix_error (error, "Parsing %s: ", path);
-      return NULL;
-    }
+    return glnx_null_throw (error, "Could not parse %s", path);
 
   g_autoptr(GVariant) value = g_variant_lookup_value (jsonmetav, "packages", G_VARIANT_TYPE ("av"));
   if (!value)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "Failed to find \"packages\" section in lock file");
-      return NULL;
-    }
+    return glnx_null_throw (error, "Failed to find \"packages\" section in lockfile");
 
   g_autoptr(GHashTable) nevra_to_chksum =
     g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
